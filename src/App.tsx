@@ -13,6 +13,8 @@ import { VisitingCardMaker } from './components/VisitingCardMaker';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { calculateDocument } from './utils/calculator';
 import { downloadPrintableHtml } from './utils/exporter';
+import { printDocumentReliably } from './utils/printer';
+import { hslToHex, hexToHue } from './utils/colorUtils';
 import { 
   Printer, 
   Share2, 
@@ -35,7 +37,9 @@ import {
   HelpCircle,
   FileSpreadsheet,
   CreditCard,
-  Download
+  Download,
+  ChevronDown,
+  Sliders
 } from 'lucide-react';
 
 const STORAGE_KEY_ACTIVE = 'billcraft_active_doc';
@@ -56,6 +60,7 @@ export default function App() {
           ...parsed,
           advanceReceived: parsed.advanceReceived !== undefined ? parsed.advanceReceived : SAMPLE_PRESETS[0].data.advanceReceived,
           fontSizeScale: parsed.fontSizeScale || 'normal',
+          qrAmountMode: parsed.qrAmountMode || 'open',
         };
       }
     } catch (e) {
@@ -77,12 +82,22 @@ export default function App() {
 
   // View & Modal states - Default to 'preview' so user directly sees the Letterhead!
   const [viewMode, setViewMode] = useState<'split' | 'preview' | 'editor'>('preview');
+  const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false);
+  const [isPresetsDropdownOpen, setIsPresetsDropdownOpen] = useState<boolean>(false);
   const [previewScale, setPreviewScale] = useState<number>(0.85);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [isSavedRecordsOpen, setIsSavedRecordsOpen] = useState(false);
   const [saveSuccessToast, setSaveSuccessToast] = useState(false);
+  const [currentHue, setCurrentHue] = useState<number>(() => hexToHue(currentDoc.primaryColor || '#0f2b48'));
+
+  // Sync hue when primaryColor updates from template or outside
+  useEffect(() => {
+    if (currentDoc.primaryColor) {
+      setCurrentHue(hexToHue(currentDoc.primaryColor));
+    }
+  }, [currentDoc.primaryColor]);
 
   // Auto-save active doc to localStorage
   useEffect(() => {
@@ -193,7 +208,7 @@ export default function App() {
         ...currentDoc.company,
       },
       client: {
-        name: 'New Client / ग्राहक का नाम',
+        name: 'New Client',
         companyName: '',
         addressLine1: 'Client Address Line 1',
         city: 'City',
@@ -205,7 +220,7 @@ export default function App() {
       items: [
         {
           id: `item-${Date.now()}`,
-          description: 'Product or Service Description (सामान का नाम)',
+          description: 'Product or Service Description',
           hsn: '9983',
           quantity: 1,
           unit: 'Pcs',
@@ -253,33 +268,23 @@ export default function App() {
     }
   };
 
-  // Print Document
-  const handlePrint = () => {
-    window.print();
+  // Print Document reliably across mobile, iframe and desktop
+  const handlePrint = async () => {
+    try {
+      await printDocumentReliably(currentDoc);
+    } catch (e) {
+      console.warn('Fallback to window.print', e);
+      window.print();
+    }
   };
 
   // Instant Download Offline Printable File
-  const handleDownloadOfflineFile = () => {
-    downloadPrintableHtml(currentDoc);
+  const handleDownloadOfflineFile = async () => {
+    await downloadPrintableHtml(currentDoc);
   };
 
-  // Universal Native Share or WhatsApp
-  const handleUniversalShare = async () => {
-    const isQuote = currentDoc.type === 'quotation' || currentDoc.type === 'estimate';
-    const shareTitle = `${isQuote ? 'Quotation' : 'Invoice'} #${currentDoc.docNumber} - ${currentDoc.company.name}`;
-    const shareText = `${isQuote ? 'Quotation' : 'Tax Invoice'} #${currentDoc.docNumber}\nTotal Amount: ${currentDoc.currency} ${calculations.grandTotal}\nFrom: ${currentDoc.company.name}\nTo: ${currentDoc.client.name}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: shareTitle,
-          text: shareText,
-        });
-        return;
-      } catch (err) {
-        // user dismissed or not supported, fallback to WhatsApp modal
-      }
-    }
+  // Universal Full Bill & Image Sharing (with Live QR Code)
+  const handleUniversalShare = () => {
     setIsWhatsAppModalOpen(true);
   };
 
@@ -331,7 +336,7 @@ export default function App() {
           </span>
 
           {/* Section Switcher Tabs (Quotation/Bill vs Visiting Card) */}
-          <div className="hidden sm:flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 ml-2 text-xs">
+          <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 ml-1 sm:ml-2 text-[11px] sm:text-xs">
             <button
               onClick={() => setActiveAppSection('documents')}
               className={`px-3 py-1 rounded-md font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
@@ -341,7 +346,7 @@ export default function App() {
               }`}
             >
               <Receipt className="w-3.5 h-3.5" />
-              <span>Quotation & Bill (बिल)</span>
+              <span>Quotation & Bill</span>
             </button>
             <button
               onClick={() => setActiveAppSection('visiting_card')}
@@ -352,7 +357,7 @@ export default function App() {
               }`}
             >
               <CreditCard className="w-3.5 h-3.5" />
-              <span>Visiting Card (विजिटिंग कार्ड)</span>
+              <span>Visiting Card</span>
             </button>
           </div>
         </div>
@@ -378,7 +383,7 @@ export default function App() {
               <div className="relative group">
                 <button className="flex items-center gap-1 px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap">
                   <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Examples (उदाहरण)</span>
+                  <span>Templates</span>
                 </button>
                 <div className="hidden group-hover:block absolute left-0 top-full pt-1 w-64 z-50">
                   <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 text-xs">
@@ -389,7 +394,7 @@ export default function App() {
                         className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex flex-col"
                       >
                         <span className="font-semibold text-slate-800 dark:text-slate-200">{p.title}</span>
-                        <span className="text-[10px] text-slate-500">{p.hindiTitle}</span>
+                        <span className="text-[10px] text-slate-500">{p.subtitle}</span>
                       </button>
                     ))}
                   </div>
@@ -439,10 +444,10 @@ export default function App() {
           {/* Primary Print / Save PDF Button */}
           <button
             onClick={handlePrint}
-            className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 dark:bg-indigo-600 rounded-lg hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors whitespace-nowrap flex items-center gap-1.5 shadow-sm"
+            className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 dark:bg-indigo-600 rounded-lg hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors whitespace-nowrap flex items-center gap-1.5 shadow-sm cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print / PDF (प्रिंट)</span>
+            <span>Print / Save PDF</span>
           </button>
         </div>
       </header>
@@ -466,7 +471,7 @@ export default function App() {
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
-                📋 Quotation (कोटेशन)
+                📋 Quotation
               </button>
               <button
                 onClick={() => {
@@ -480,7 +485,7 @@ export default function App() {
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
-                🧾 Tax Invoice / Bill (बिल)
+                🧾 Tax Invoice / Bill
               </button>
             </div>
 
@@ -488,13 +493,41 @@ export default function App() {
             <button
               onClick={handleConvertToBill}
               title="Automatically switch between Quotation and Bill"
-              className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg font-medium text-xs transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg font-medium text-xs transition-colors cursor-pointer"
             >
               <ArrowRightLeft className="w-3 h-3" />
               <span>
                 {currentDoc.type === 'quotation' ? 'Convert to Bill' : 'Convert to Quote'}
               </span>
             </button>
+
+            {/* Top Workspace Mode 1 vs Mode 2 Switcher */}
+            <div className="hidden sm:flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 ml-1">
+              <button
+                type="button"
+                onClick={() => setCurrentDoc({ ...currentDoc, tableMode: 'measurement_sqft', updatedAt: new Date().toISOString() })}
+                className={`px-2.5 py-1 rounded-md font-semibold text-xs transition-all flex items-center gap-1 ${
+                  currentDoc.tableMode !== 'cash_ledger' && currentDoc.tableMode !== 'direct_amount'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+                title="Mode 1: Detailed Sq.Ft Area & Rate List (Painting, Polishing, Carpentry, POP)"
+              >
+                <span>📐 Mode 1: Sq.Ft & Rate</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentDoc({ ...currentDoc, tableMode: 'cash_ledger', updatedAt: new Date().toISOString() })}
+                className={`px-2.5 py-1 rounded-md font-semibold text-xs transition-all flex items-center gap-1 ${
+                  currentDoc.tableMode === 'cash_ledger' || currentDoc.tableMode === 'direct_amount'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+                title="Mode 2: Direct Cash & Credit Ledger (Lump sum amounts, Advances, Debits & Credits)"
+              >
+                <span>💰 Mode 2: Cash & Advance</span>
+              </button>
+            </div>
           </div>
 
           {/* Center: Active Template indicator */}
@@ -502,7 +535,7 @@ export default function App() {
             <span className="text-slate-500">Letterhead:</span>
             <button
               onClick={() => setIsTemplateModalOpen(true)}
-              className="font-bold text-slate-800 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1"
+              className="font-bold text-slate-800 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 cursor-pointer"
             >
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: currentDoc.primaryColor }} />
               <span>{activeTemplate.name}</span>
@@ -532,7 +565,7 @@ export default function App() {
               </div>
             )}
 
-            {/* View Mode Toggle with Hindi + English labels */}
+            {/* View Mode Toggle with English labels */}
             <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
               <button
                 onClick={() => setViewMode('preview')}
@@ -541,10 +574,10 @@ export default function App() {
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
-                title="Direct Letterhead Live View & Edit"
+                title="Live Letterhead View & Inline Edit"
               >
                 <Eye className="w-3.5 h-3.5" />
-                <span>👁️ लेटरपैड (Direct Letterhead)</span>
+                <span>👁️ Live Letterhead</span>
               </button>
               <button
                 onClick={() => setViewMode('split')}
@@ -556,7 +589,7 @@ export default function App() {
                 title="Split View (Form + Preview)"
               >
                 <Columns className="w-3.5 h-3.5" />
-                <span>स्प्लिट (Split)</span>
+                <span>Split View</span>
               </button>
               <button
                 onClick={() => setViewMode('editor')}
@@ -568,7 +601,7 @@ export default function App() {
                 title="Form Editor"
               >
                 <Edit3 className="w-3.5 h-3.5" />
-                <span>फॉर्म (Form)</span>
+                <span>Form Editor</span>
               </button>
             </div>
           </div>
@@ -603,189 +636,303 @@ export default function App() {
                   viewMode === 'preview' ? 'lg:col-span-12 w-full' : 'lg:col-span-7'
                 }`}
               >
-                {/* ================= 10 DEMO LETTERHEADS QUICK SELECTOR BAR ================= */}
-                <div className="no-print w-full max-w-[210mm] mb-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
-                  <div className="flex items-center justify-between">
+                {/* ================= IF IN CLEAN PREVIEW MODE: SHOW MINIMAL ACTION BAR ================= */}
+                {isPreviewMode ? (
+                  <div className="no-print w-full max-w-[210mm] mb-3 bg-white dark:bg-slate-800 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-white font-extrabold text-[11px] shadow-xs">
-                        10
+                      <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="font-extrabold text-slate-800 dark:text-slate-100">
+                        👁️ Clean Print Preview Mode
                       </span>
-                      <span className="font-extrabold text-xs text-slate-900 dark:text-slate-100 uppercase tracking-wide">
-                        डेमो लेटरहेड डिज़ाइन्स (10 Ready Demo Letterheads):
+                      <span className="text-[11px] text-slate-500 hidden sm:inline">
+                        (Pristine printable sheet — all edit outlines & buttons hidden)
                       </span>
                     </div>
-                    <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold hidden sm:inline">
-                      ✨ नाम, रेट, आइटम व सारा विवरण पहले से भरा है — क्लिक करके तुरंत देखें व एडिट करें!
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsPreviewMode(false)}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Back to Edit Mode</span>
+                      </button>
+                      <button
+                        onClick={handlePrint}
+                        className="px-3 py-1.5 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Print</span>
+                      </button>
+                      <button
+                        onClick={handleUniversalShare}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>Share</span>
+                      </button>
+                    </div>
                   </div>
-
-                  {/* 10 Direct Demo Letterhead Cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 overflow-x-auto pb-0.5">
-                    {SAMPLE_PRESETS.map((preset, idx) => {
-                      const isSelected = currentDoc.id === preset.data.id || currentDoc.company.name === preset.data.company.name;
-                      return (
+                ) : (
+                  <>
+                    {/* ================= BAR 1: SINGLE 10-PRESETS BUTTON + MODE 1 & 2 + CLEAN PREVIEW BUTTON ================= */}
+                    <div className="no-print w-full max-w-[210mm] mb-2.5 bg-white dark:bg-slate-800 px-3.5 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-wrap items-center justify-between gap-2.5 text-xs relative">
+                      
+                      {/* Left: 1 Single Dropdown Button for all 10 Presets */}
+                      <div className="relative">
                         <button
-                          key={preset.id}
-                          onClick={() => handleLoadPreset(preset.id)}
-                          className={`p-2 rounded-xl text-left border transition-all flex flex-col justify-between ${
-                            isSelected
-                              ? 'bg-indigo-50 dark:bg-indigo-950/70 border-indigo-500 ring-2 ring-indigo-500/40 shadow-xs'
-                              : 'bg-slate-50/80 dark:bg-slate-700/40 border-slate-200 dark:border-slate-600 hover:border-indigo-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          type="button"
+                          onClick={() => setIsPresetsDropdownOpen(!isPresetsDropdownOpen)}
+                          className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer text-xs"
+                          title="Click to view all 10 ready demo letterheads"
+                        >
+                          <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white/25 text-white font-black text-[10px]">
+                            10
+                          </span>
+                          <span>📂 10 Ready Demo Presets</span>
+                          <span className="text-[10px] opacity-80">▾</span>
+                        </button>
+
+                        {/* Floating Dropdown for 10 Presets */}
+                        {isPresetsDropdownOpen && (
+                          <>
+                            <div 
+                              className="fixed inset-0 z-30" 
+                              onClick={() => setIsPresetsDropdownOpen(false)} 
+                            />
+                            <div className="absolute left-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-2 z-40 max-h-[75vh] overflow-y-auto space-y-1 animate-in fade-in zoom-in-95">
+                              <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                                <span className="font-extrabold text-[11px] uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                                  10 Ready Demo Letterheads
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono">Click to load</span>
+                              </div>
+                              {SAMPLE_PRESETS.map((preset, idx) => {
+                                const isSelected = currentDoc.id === preset.data.id || currentDoc.company.name === preset.data.company.name;
+                                return (
+                                  <button
+                                    key={preset.id}
+                                    type="button"
+                                    onClick={() => {
+                                      handleLoadPreset(preset.id);
+                                      setIsPresetsDropdownOpen(false);
+                                    }}
+                                    className={`w-full p-2.5 rounded-xl text-left transition flex items-start gap-2.5 cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-400 text-indigo-950 dark:text-indigo-200 font-medium'
+                                        : 'hover:bg-slate-50 dark:hover:bg-slate-700/60 text-slate-800 dark:text-slate-200'
+                                    }`}
+                                  >
+                                    <span className="text-xl shrink-0 p-1.5 bg-slate-100 dark:bg-slate-700/80 rounded-xl">{preset.icon}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-bold text-xs truncate">
+                                          {idx + 1}. {preset.data.company.name}
+                                        </span>
+                                        <span className="text-[9px] bg-slate-100 dark:bg-slate-700 px-1.5 py-0.2 rounded font-semibold text-slate-500 shrink-0">
+                                          {preset.title.split(' ')[0]}
+                                        </span>
+                                      </div>
+                                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                                        {preset.data.workTypeTitle || preset.subtitle}
+                                      </p>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Middle: 2 Table Calculation Modes (Sq.Ft vs Cash & Advance) */}
+                      <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-700/60 rounded-xl border border-slate-200 dark:border-slate-600">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentDoc({ ...currentDoc, tableMode: 'measurement_sqft', updatedAt: new Date().toISOString() })}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            currentDoc.tableMode !== 'cash_ledger' && currentDoc.tableMode !== 'direct_amount'
+                              ? 'bg-indigo-600 text-white shadow-xs'
+                              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                          }`}
+                          title="Mode 1: Detailed Sq.Ft Area & Rate (Painting, Polishing, Carpentry, POP)"
+                        >
+                          <span>📐 Mode 1: Sq.Ft</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentDoc({ ...currentDoc, tableMode: 'cash_ledger', updatedAt: new Date().toISOString() })}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            currentDoc.tableMode === 'cash_ledger' || currentDoc.tableMode === 'direct_amount'
+                              ? 'bg-indigo-600 text-white shadow-xs'
+                              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                          }`}
+                          title="Mode 2: Direct Cash & Advance Ledger (Lump sums, Advances, Debits & Credits)"
+                        >
+                          <span>💰 Mode 2: Cash</span>
+                        </button>
+                      </div>
+
+                      {/* Right: Switch to Clean Preview Mode */}
+                      <button
+                        type="button"
+                        onClick={() => setIsPreviewMode(true)}
+                        className="px-3.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 rounded-xl font-extrabold text-xs transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                        title="View Clean Printable Sheet without edit borders or buttons"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>👁️ Clean Preview</span>
+                      </button>
+                    </div>
+
+                    {/* ================= BAR 2: RAINBOW HUE COLOR SLIDER + TEXT SIZE + LINING STYLES ================= */}
+                    <div className="no-print w-full max-w-[210mm] mb-2.5 bg-white dark:bg-slate-800 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-wrap items-center justify-between gap-2.5 text-xs">
+                      
+                      {/* Live Hue Rainbow Color Slider */}
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1 text-[11px] shrink-0">
+                          <Palette className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Slide Color:</span>
+                        </span>
+
+                        <div className="flex items-center gap-1.5">
+                          {/* Rainbow track slider */}
+                          <input
+                            type="range"
+                            min="0"
+                            max="360"
+                            value={currentHue}
+                            onChange={(e) => {
+                              const hue = parseInt(e.target.value, 10);
+                              setCurrentHue(hue);
+                              const newHex = hslToHex(hue, 85, 26);
+                              setCurrentDoc((prev) => ({
+                                ...prev,
+                                primaryColor: newHex,
+                                updatedAt: new Date().toISOString(),
+                              }));
+                            }}
+                            className="w-28 sm:w-36 h-3 rounded-lg appearance-none cursor-pointer shadow-inner"
+                            style={{
+                              background: 'linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%)',
+                            }}
+                            title="Slide smoothly across all colors in real time!"
+                          />
+
+                          {/* Native Hex Color Picker */}
+                          <input
+                            type="color"
+                            value={currentDoc.primaryColor}
+                            onChange={(e) => {
+                              const col = e.target.value;
+                              setCurrentDoc((prev) => ({ ...prev, primaryColor: col, updatedAt: new Date().toISOString() }));
+                              setCurrentHue(hexToHue(col));
+                            }}
+                            title="Click to pick any custom color"
+                            className="w-5 h-5 rounded cursor-pointer border border-slate-300 dark:border-slate-600 shrink-0 p-0"
+                          />
+                        </div>
+
+                        {/* Quick Palette Swatches */}
+                        <div className="flex items-center gap-1">
+                          {[
+                            { hex: '#0f2b48', name: 'Navy' },
+                            { hex: '#991b1b', name: 'Maroon' },
+                            { hex: '#064e3b', name: 'Emerald' },
+                            { hex: '#b45309', name: 'Amber' },
+                            { hex: '#4338ca', name: 'Indigo' },
+                            { hex: '#0f766e', name: 'Teal' },
+                          ].map((col) => (
+                            <button
+                              key={col.hex}
+                              onClick={() => setCurrentDoc({ ...currentDoc, primaryColor: col.hex, updatedAt: new Date().toISOString() })}
+                              title={col.name}
+                              className={`w-4 h-4 rounded-full border transition-transform ${
+                                currentDoc.primaryColor.toLowerCase() === col.hex.toLowerCase()
+                                  ? 'scale-125 ring-2 ring-indigo-500 shadow-xs'
+                                  : 'hover:scale-110'
+                              }`}
+                              style={{ backgroundColor: col.hex }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Text Size Scale */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
+                          Aa Size:
+                        </span>
+                        <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-200 dark:border-slate-600">
+                          <button
+                            onClick={() => setCurrentDoc({ ...currentDoc, fontSizeScale: 'compact', updatedAt: new Date().toISOString() })}
+                            className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition ${currentDoc.fontSizeScale === 'compact' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-xs' : 'text-slate-500'}`}
+                            title="Small"
+                          >
+                            A-
+                          </button>
+                          <button
+                            onClick={() => setCurrentDoc({ ...currentDoc, fontSizeScale: 'normal', updatedAt: new Date().toISOString() })}
+                            className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition ${currentDoc.fontSizeScale === 'normal' || !currentDoc.fontSizeScale ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-xs' : 'text-slate-500'}`}
+                            title="Normal"
+                          >
+                            A
+                          </button>
+                          <button
+                            onClick={() => setCurrentDoc({ ...currentDoc, fontSizeScale: 'large', updatedAt: new Date().toISOString() })}
+                            className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition ${currentDoc.fontSizeScale === 'large' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-xs' : 'text-slate-500'}`}
+                            title="Large"
+                          >
+                            A+
+                          </button>
+                          <button
+                            onClick={() => setCurrentDoc({ ...currentDoc, fontSizeScale: 'xlarge', updatedAt: new Date().toISOString() })}
+                            className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold transition ${currentDoc.fontSizeScale === 'xlarge' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-xs' : 'text-slate-500'}`}
+                            title="Extra Large"
+                          >
+                            A++
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 30 Letterhead Designs trigger */}
+                      <button
+                        onClick={() => setIsTemplateModalOpen(true)}
+                        className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>30 Designs</span>
+                      </button>
+                    </div>
+
+                    {/* ================= BAR 3: LINING & FRAME STYLE SELECTOR ================= */}
+                    <div className="no-print w-full max-w-[210mm] mb-3 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
+                      <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1 shrink-0 text-[10.5px]">
+                        <span>📐</span> Frame:
+                      </span>
+                      {[
+                        { id: 'contractor_ledger', label: 'Contractor Ledger', icon: '📐' },
+                        { id: 'double_border', label: 'Double Border', icon: '🏛️' },
+                        { id: 'architect_grid', label: 'Architect Grid', icon: '🏗️' },
+                        { id: 'ruled_ledger', label: 'Ruled Classic', icon: '📜' },
+                        { id: 'executive_box', label: 'Executive Box', icon: '🏢' },
+                        { id: 'modern_clean', label: 'Minimal Clean', icon: '✨' },
+                      ].map((style) => (
+                        <button
+                          key={style.id}
+                          onClick={() => setCurrentDoc({ ...currentDoc, liningStyle: style.id as any, updatedAt: new Date().toISOString() })}
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold whitespace-nowrap transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                            (currentDoc.liningStyle || 'contractor_ledger') === style.id
+                              ? 'bg-slate-900 dark:bg-indigo-600 text-white shadow-xs font-bold'
+                              : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-300'
                           }`}
                         >
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="text-sm">{preset.icon}</span>
-                            <span className="font-bold text-[11px] text-slate-800 dark:text-slate-200 truncate">
-                              {idx + 1}. {preset.data.company.name.split(' ')[0]} {preset.data.company.name.split(' ')[1] || ''}
-                            </span>
-                          </div>
-                          <div className="text-[9.5px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                            {preset.data.workTypeTitle ? preset.data.workTypeTitle.slice(0, 24) : preset.title.slice(0, 24)}
-                          </div>
+                          <span>{style.icon}</span>
+                          <span>{style.label}</span>
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* ================= LETTERHEAD LINING STYLES SELECTOR BAR ================= */}
-                <div className="no-print w-full max-w-[210mm] mb-2.5 bg-white dark:bg-slate-800 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-                    <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1 shrink-0 text-[11px]">
-                      <span>📐</span> लाइनिंग स्टाइल (Lining):
-                    </span>
-                    {[
-                      { id: 'contractor_ledger', label: 'सैंपल जैसा खाता (Raj Sahani)', icon: '📐' },
-                      { id: 'double_border', label: 'डबल बॉर्डर (Double Frame)', icon: '🏛️' },
-                      { id: 'architect_grid', label: 'इंजीनियर ग्रिड (Architect)', icon: '🏗️' },
-                      { id: 'ruled_ledger', label: 'बही-खाता लाल (Vyapar)', icon: '📜' },
-                      { id: 'executive_box', label: 'एग्जीक्यूटिव बॉक्स (Corporate)', icon: '🏢' },
-                      { id: 'modern_clean', label: 'मिनिमल क्लीन (Clean)', icon: '✨' },
-                    ].map((style) => (
-                      <button
-                        key={style.id}
-                        onClick={() => setCurrentDoc({ ...currentDoc, liningStyle: style.id as any, updatedAt: new Date().toISOString() })}
-                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-semibold whitespace-nowrap transition-all shrink-0 flex items-center gap-1 ${
-                          (currentDoc.liningStyle || 'contractor_ledger') === style.id
-                            ? 'bg-slate-900 dark:bg-indigo-600 text-white shadow-xs font-bold'
-                            : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-300'
-                        }`}
-                      >
-                        <span>{style.icon}</span>
-                        <span>{style.label}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* 30 Letterhead Designs Modal Trigger */}
-                  <button
-                    onClick={() => setIsTemplateModalOpen(true)}
-                    className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 shrink-0"
-                  >
-                    <span>+ 30 Designs देखें</span>
-                  </button>
-                </div>
-
-                {/* ================= FLOATING TOOLBAR: TEXT SIZE, QUICK COLORS, INLINE EDIT HINT ================= */}
-                <div className="no-print mb-3 flex flex-wrap items-center justify-between gap-2 w-full max-w-[210mm] text-xs bg-white dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
-                  
-                  {/* Left: Text Size Scale ("Bada / Chhota") */}
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                      <span className="text-indigo-600">Aa</span> Text साइज़:
-                    </span>
-                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-200 dark:border-slate-600">
-                      <button
-                        onClick={() => setCurrentDoc({ ...currentDoc, fontSizeScale: 'compact', updatedAt: new Date().toISOString() })}
-                        className={`px-2 py-0.5 rounded text-[11px] font-bold transition ${currentDoc.fontSizeScale === 'compact' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-xs' : 'text-slate-500'}`}
-                        title="Small text"
-                      >
-                        A- (छोटा)
-                      </button>
-                      <button
-                        onClick={() => setCurrentDoc({ ...currentDoc, fontSizeScale: 'normal', updatedAt: new Date().toISOString() })}
-                        className={`px-2 py-0.5 rounded text-[11px] font-bold transition ${currentDoc.fontSizeScale === 'normal' || !currentDoc.fontSizeScale ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-xs' : 'text-slate-500'}`}
-                        title="Normal text"
-                      >
-                        A (सामान्य)
-                      </button>
-                      <button
-                        onClick={() => setCurrentDoc({ ...currentDoc, fontSizeScale: 'large', updatedAt: new Date().toISOString() })}
-                        className={`px-2 py-0.5 rounded text-[11px] font-bold transition ${currentDoc.fontSizeScale === 'large' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-xs' : 'text-slate-500'}`}
-                        title="Large text"
-                      >
-                        A+ (बड़ा)
-                      </button>
-                      <button
-                        onClick={() => setCurrentDoc({ ...currentDoc, fontSizeScale: 'xlarge', updatedAt: new Date().toISOString() })}
-                        className={`px-2 py-0.5 rounded text-[11px] font-bold transition ${currentDoc.fontSizeScale === 'xlarge' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-xs' : 'text-slate-500'}`}
-                        title="Extra Large text"
-                      >
-                        A++ (बहुत बड़ा)
-                      </button>
+                      ))}
                     </div>
-                  </div>
-
-                  {/* Center: Quick Color Palette */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-slate-500 font-medium text-[11px]">रंग (Color):</span>
-                    {[
-                      { hex: '#0f2b48', name: 'Navy' },
-                      { hex: '#991b1b', name: 'Maroon' },
-                      { hex: '#064e3b', name: 'Emerald' },
-                      { hex: '#b45309', name: 'Amber' },
-                      { hex: '#18181b', name: 'Charcoal' },
-                      { hex: '#4338ca', name: 'Indigo' },
-                      { hex: '#be123c', name: 'Crimson' },
-                      { hex: '#0f766e', name: 'Teal' },
-                    ].map((col) => (
-                      <button
-                        key={col.hex}
-                        onClick={() => setCurrentDoc({ ...currentDoc, primaryColor: col.hex, updatedAt: new Date().toISOString() })}
-                        title={col.name}
-                        className={`w-5 h-5 rounded-full border transition-transform ${
-                          currentDoc.primaryColor.toLowerCase() === col.hex.toLowerCase()
-                            ? 'scale-125 ring-2 ring-indigo-500 ring-offset-1 shadow-xs'
-                            : 'hover:scale-110'
-                        }`}
-                        style={{ backgroundColor: col.hex }}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Right: Inline Edit Badge */}
-                  <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>सीधे लेटरपैड पर क्लिक करके बदलें</span>
-                  </div>
-                </div>
-
-                {/* Informative Hint Banner for Easy Editing & Table Mode Switch */}
-                <div className="no-print w-full max-w-[210mm] mb-3 px-3.5 py-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl text-amber-950 dark:text-amber-100 text-xs flex flex-wrap items-center justify-between gap-2 shadow-2xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-amber-800 dark:text-amber-300">✍️ आसान खाता:</span>
-                    <span>बिना SqFt/इंच के सिर्फ रकम लिखें, या <strong>[+] काम</strong> और <strong>[-] एडवांस</strong> जोड़ें। हर चीज़ सीधे लेटरपैड पर एडिट करें।</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const next = (currentDoc.tableMode || 'direct_amount') === 'direct_amount' ? 'rate_qty' : 'direct_amount';
-                        setCurrentDoc({ ...currentDoc, tableMode: next, updatedAt: new Date().toISOString() });
-                      }}
-                      className="px-3 py-1 bg-white dark:bg-slate-800 border border-amber-400 hover:bg-amber-100 dark:hover:bg-slate-700 text-amber-950 dark:text-amber-200 rounded-lg font-bold text-[11px] transition shadow-2xs flex items-center gap-1"
-                    >
-                      <span>{(currentDoc.tableMode || 'direct_amount') === 'direct_amount' ? '💰 सीधा रकम (Active)' : '📏 SqFt & रेट (Active)'}</span>
-                      <span className="text-indigo-600 font-semibold underline text-[10px] ml-1">मोड बदलें ⇄</span>
-                    </button>
-                    <button
-                      onClick={handlePrint}
-                      className="px-3 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-lg font-bold text-[11px] transition shadow-2xs flex items-center gap-1"
-                    >
-                      <Printer className="w-3 h-3" />
-                      <span>प्रिंट निकालें</span>
-                    </button>
-                  </div>
-                </div>
+                  </>
+                )}
 
                 {/* The Actual A4 Sheet */}
                 <div className="print-container transition-transform">
@@ -793,7 +940,7 @@ export default function App() {
                     document={currentDoc}
                     onUpdateDocument={setCurrentDoc}
                     scale={previewScale}
-                    isEditable={true}
+                    isEditable={!isPreviewMode}
                   />
                 </div>
               </div>

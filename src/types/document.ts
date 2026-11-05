@@ -96,6 +96,7 @@ export interface DocumentData {
   // Payment info
   bankDetails: BankDetails;
   showUpiQr: boolean;
+  qrAmountMode?: 'open' | 'fixed'; // 'open' = No amount embedded (customer enters any amount they want), 'fixed' = embeds net due amount
   
   // Terms & Signatures
   notes: string;
@@ -111,7 +112,10 @@ export interface DocumentData {
   fontFamily: 'sans' | 'serif' | 'modern' | 'mono';
   fontSizeScale?: 'compact' | 'normal' | 'large' | 'xlarge';
   liningStyle?: 'contractor_ledger' | 'double_border' | 'executive_box' | 'ruled_ledger' | 'modern_clean' | 'architect_grid';
-  tableMode?: 'direct_amount' | 'rate_qty'; // 'direct_amount' = Lumpsum amount / Khata (no sqft/qty required), 'rate_qty' = Qty x Rate
+  tableMode?: 'measurement_sqft' | 'cash_ledger' | 'direct_amount' | 'rate_qty'; // Mode 1: 'measurement_sqft' (Sq.Ft / Rate / Area for Painting, Carpentry), Mode 2: 'cash_ledger' (Direct Cash & Advance Debit/Credit Ledger)
+  taxBoxBgColor?: string; // Custom background color for the Service Tax / GST highlight box
+  taxTextColor?: string;  // Custom text color for the tax box
+  taxCustomLabel?: string; // e.g. "Service Tax (Labour)" or "GST"
   customGrandTotal?: number;
   currency: string;
   
@@ -123,8 +127,8 @@ export interface LetterheadTemplate {
   id: string;
   number: number;
   name: string;
-  hindiName: string;
-  category: 'Corporate' | 'Modern Minimal' | 'Royal Luxury' | 'Vyapar Traditional' | 'Creative Studio' | 'Industrial' | 'Tech' | 'Medical' | 'Compact';
+  subtitle?: string;
+  category: 'Corporate' | 'Modern Minimal' | 'Royal Luxury' | 'Traditional Ledger' | 'Creative Studio' | 'Industrial' | 'Tech' | 'Medical' | 'Compact';
   description: string;
   defaultPrimaryColor: string;
   defaultSecondaryColor: string;

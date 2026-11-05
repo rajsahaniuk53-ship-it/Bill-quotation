@@ -57,7 +57,7 @@ export const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
     const matchesCat = selectedCategory === 'All' || tpl.category === selectedCategory;
     const matchesSearch = 
       tpl.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tpl.hindiName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (tpl.subtitle && tpl.subtitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
       tpl.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tpl.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
@@ -82,7 +82,7 @@ export const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
               </h2>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              30 प्रीमियम लेटरहेड और बिल डिज़ाइन — किसी भी डिज़ाइन को 1-क्लिक में चुनें और तुरंत कस्टमाइज़ करें
+              Select any design with a single click to instantly apply styling and color themes
             </p>
           </div>
           <button
@@ -97,7 +97,7 @@ export const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
         {/* Color customizer strip */}
         <div className="px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">Accent Theme Color (रंग चुनें):</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">Accent Theme Color:</span>
             <div className="flex items-center gap-1.5 flex-wrap">
               {PRESET_COLORS.map((c) => (
                 <button
@@ -254,9 +254,11 @@ export const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
                       <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">
                         {tpl.name}
                       </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        {tpl.hindiName}
-                      </p>
+                      {tpl.subtitle && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {tpl.subtitle}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">

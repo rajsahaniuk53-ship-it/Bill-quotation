@@ -10,6 +10,7 @@ export interface VisitingCardData {
   address: string;
   cityStatePincode: string;
   gstin?: string;
+  upiId?: string;
   logoUrl?: string;
   qrType: 'vcard' | 'upi' | 'website';
   qrContent: string;
@@ -18,18 +19,23 @@ export interface VisitingCardData {
   secondaryColor: string;
   fontFamily: 'sans' | 'serif' | 'modern' | 'mono';
   activeSide: 'front' | 'back' | 'both';
-  printLayout: 'single' | 'sheet'; // 'single' card or 'sheet' of 8-10 cards on A4
+  printLayout: 'single' | 'sheet' | 'paired_duplex'; // 'single', 'sheet' of 10, or 'paired_duplex' Front+Back side-by-side with crop marks
+  metalType?: 'gold' | 'silver' | 'copper' | 'titanium' | 'bronze' | 'none';
 }
 
 export interface VisitingCardTheme {
   id: string;
   name: string;
-  hindiName: string;
-  category: string;
+  subtitle?: string;
+  category: 'Metallic Luxury' | 'Gold' | 'Silver' | 'Copper' | 'Luxury' | 'Corporate' | 'Minimal' | 'Traditional' | 'Tech';
   defaultPrimary: string;
   defaultSecondary: string;
   defaultFont: 'sans' | 'serif' | 'modern' | 'mono';
   bgGradient: string;
   textColor: string;
   accentColor: string;
+  metalType?: 'gold' | 'silver' | 'copper' | 'titanium' | 'bronze';
+  metallicFoil?: string;
+  cardBorder?: string;
+  sheenHighlight?: string;
 }

@@ -105,7 +105,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
           <div className="flex items-center gap-2">
             <PenTool className="w-4 h-4 text-indigo-600" />
             <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-              Digital Signature (डिजिटल हस्ताक्षर)
+              Digital Signature
             </h3>
           </div>
           <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded">
@@ -123,7 +123,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            <PenTool className="w-3.5 h-3.5" /> Draw on Canvas (हाथ से साइन करें)
+            <PenTool className="w-3.5 h-3.5" /> Draw on Canvas
           </button>
           <button
             onClick={() => setActiveTab('upload')}
@@ -133,7 +133,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
-            <Upload className="w-3.5 h-3.5" /> Upload Image (फोटो अपलोड)
+            <Upload className="w-3.5 h-3.5" /> Upload Image
           </button>
         </div>
 
@@ -163,7 +163,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                   onClick={clearCanvas}
                   className="absolute bottom-2 right-2 text-[10px] bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-1 rounded border border-slate-200 shadow-sm flex items-center gap-1 hover:bg-slate-100"
                 >
-                  <RotateCcw className="w-3 h-3" /> Clear (मिटाएं)
+                  <RotateCcw className="w-3 h-3" /> Clear
                 </button>
               </div>
             </div>
@@ -215,7 +215,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
               onClick={handleSaveDrawn}
               className="px-4 py-1.5 text-xs font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1 shadow-sm"
             >
-              <Check className="w-3.5 h-3.5" /> Save Signature (हस्ताक्षर जोड़ें)
+              <Check className="w-3.5 h-3.5" /> Save Signature
             </button>
           )}
         </div>

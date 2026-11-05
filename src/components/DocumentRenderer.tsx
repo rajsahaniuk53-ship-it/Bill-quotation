@@ -36,14 +36,20 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
   const template = LETTERHEAD_TEMPLATES.find((t) => t.id === doc.templateId) || LETTERHEAD_TEMPLATES[0];
   const calculations = calculateDocument(doc);
 
-  // Generate UPI QR code
+  // Generate UPI QR code (Supports Open Amount - No amount encoded so customer enters any amount they want!)
   useEffect(() => {
     let isMounted = true;
     if (doc.showUpiQr && doc.bankDetails.upiId) {
+      // By default or when doc.qrAmountMode !== 'fixed', amount is null (Open Amount)
+      const isFixed = doc.qrAmountMode === 'fixed';
+      const targetAmount = isFixed 
+        ? (calculations.netRemainingDue > 0 ? calculations.netRemainingDue : calculations.grandTotal)
+        : null;
+
       generateUpiQrDataUrl(
         doc.bankDetails.upiId,
         doc.bankDetails.accountName || doc.company.name,
-        calculations.netRemainingDue > 0 ? calculations.netRemainingDue : calculations.grandTotal,
+        targetAmount,
         `${doc.type === 'quotation' ? 'Quote' : 'Invoice'} ${doc.docNumber}`
       ).then((url) => {
         if (isMounted) setUpiQrUrl(url);
@@ -54,7 +60,17 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [doc.showUpiQr, doc.bankDetails.upiId, doc.bankDetails.accountName, doc.company.name, calculations.netRemainingDue, calculations.grandTotal, doc.docNumber, doc.type]);
+  }, [
+    doc.showUpiQr, 
+    doc.qrAmountMode, 
+    doc.bankDetails.upiId, 
+    doc.bankDetails.accountName, 
+    doc.company.name, 
+    calculations.netRemainingDue, 
+    calculations.grandTotal, 
+    doc.docNumber, 
+    doc.type
+  ]);
 
   // Root field update
   const handleUpdate = (field: keyof DocumentData, value: any) => {
@@ -82,6 +98,16 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
     onUpdateDocument({
       ...doc,
       client: { ...doc.client, [field]: value },
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  // Bank details update
+  const handleUpdateBank = (field: string, value: string) => {
+    if (!onUpdateDocument) return;
+    onUpdateDocument({
+      ...doc,
+      bankDetails: { ...doc.bankDetails, [field]: value },
       updatedAt: new Date().toISOString(),
     });
   };
@@ -143,11 +169,13 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
     });
   };
 
-  // Toggle Table Mode: 'direct_amount' (No SqFt/Rate required) vs 'rate_qty' (Detailed Qty x Rate)
-  const handleToggleTableMode = () => {
+  // Toggle Table Mode: 'measurement_sqft' (Qty x Rate detailed list) vs 'cash_ledger' (Direct Cash / Advance)
+  const handleToggleTableMode = (targetMode?: 'measurement_sqft' | 'cash_ledger' | 'direct_amount' | 'rate_qty') => {
     if (!onUpdateDocument) return;
     const current = doc.tableMode || 'direct_amount';
-    const next = current === 'direct_amount' ? 'rate_qty' : 'direct_amount';
+    const next = targetMode 
+      ? targetMode 
+      : ((current === 'direct_amount' || current === 'cash_ledger') ? 'measurement_sqft' : 'cash_ledger');
     onUpdateDocument({
       ...doc,
       tableMode: next,
@@ -163,8 +191,8 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
     const newItem: LineItem = {
       id: `item-${Date.now()}`,
       description: isAdv 
-        ? 'पेंट का एडवांस मिला (Paint Advance Received)' 
-        : (isDirect ? 'काम / मटेरियल विवरण (Work Description)' : 'NEW WORK PARTICULARS / नया काम'),
+        ? 'Advance Payment Received' 
+        : (isDirect ? 'Work Description / Particulars' : 'New Work Item'),
       hsn: isAdv ? '' : '9954',
       quantity: isDirect ? 1 : 100,
       unit: isDirect ? 'Lump' : 'SFT',
@@ -384,36 +412,21 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
             </div>
           </div>
 
-          {/* ================= WORK TYPE TITLE BANNER & FORMAT MODE SWITCHER ================= */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mb-3">
-            <div 
-              className="flex-1 py-2 px-4 rounded text-center font-extrabold text-xs uppercase tracking-wider shadow-2xs"
-              style={{
-                backgroundColor: `${primaryColor}15`,
-                color: primaryColor,
-                border: `1.5px solid ${primaryColor}50`,
-              }}
-            >
-              <input
-                type="text"
-                value={doc.workTypeTitle || (doc.type === 'quotation' ? 'QUOTATION FOR LABOUR WITH MATERIAL CHARGES' : 'BILL FOR LABOUR WITH MATERIAL CHARGES')}
-                onChange={(e) => handleUpdate('workTypeTitle', e.target.value)}
-                className="w-full text-center bg-transparent font-extrabold focus:outline-none"
-              />
-            </div>
-
-            {/* Quick 1-Click Table Mode Switcher (Direct Amount / Khata vs SqFt & Rate) */}
-            <button
-              type="button"
-              onClick={handleToggleTableMode}
-              title="Click to switch between Direct Lump Sum Amount and Detailed SqFt Rate List"
-              className="no-print px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300 font-bold text-xs flex items-center justify-center gap-1.5 transition shrink-0 shadow-2xs"
-            >
-              <span>{doc.tableMode === 'direct_amount' ? '💰 सीधा रकम खाता (No SqFt)' : '📏 स्क्वेयर फीट & रेट'}</span>
-              <span className="text-[10px] bg-indigo-600 text-white px-1.5 py-0.5 rounded font-normal">
-                {doc.tableMode === 'direct_amount' ? 'स्विच: रेट लिस्ट' : 'स्विच: सीधा रकम'}
-              </span>
-            </button>
+          {/* ================= WORK TYPE TITLE BANNER ================= */}
+          <div 
+            className="w-full py-2 px-4 rounded text-center font-extrabold text-xs uppercase tracking-wider shadow-2xs mb-3"
+            style={{
+              backgroundColor: `${primaryColor}15`,
+              color: primaryColor,
+              border: `1.5px solid ${primaryColor}50`,
+            }}
+          >
+            <input
+              type="text"
+              value={doc.workTypeTitle || (doc.type === 'quotation' ? 'QUOTATION FOR LABOUR WITH MATERIAL CHARGES' : 'BILL FOR LABOUR WITH MATERIAL CHARGES')}
+              onChange={(e) => handleUpdate('workTypeTitle', e.target.value)}
+              className="w-full text-center bg-transparent font-extrabold focus:outline-none"
+            />
           </div>
 
           {/* ================= PARTICULARS / WORK ITEMS TABLE (With Strict Grid Lining) ================= */}
@@ -427,31 +440,32 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
                     color: template.tableHeaderStyle === 'dark' ? '#ffffff' : '#0f172a',
                   }}
                 >
-                  <th className={`py-2.5 px-2 text-center w-10 ${cellBorderClass}`}>क्र.</th>
+                  <th className={`py-2.5 px-2 text-center w-10 ${cellBorderClass}`}>#</th>
                   <th className={`py-2.5 px-3 ${cellBorderClass}`}>
-                    {doc.tableMode === 'direct_amount' 
-                      ? 'काम का विवरण या एडवांस (PARTICULARS / DESCRIPTION)' 
-                      : 'ITEM DESCRIPTION / काम का विवरण'}
+                    {(doc.tableMode === 'cash_ledger' || doc.tableMode === 'direct_amount')
+                      ? 'PARTICULARS / TRANSACTION DESCRIPTION' 
+                      : 'WORK DESCRIPTION (PAINTING / POLISHING / CARPENTRY / INTERIOR)'}
                   </th>
-                  <th className={`py-2.5 px-2 text-center w-24 ${cellBorderClass}`}>प्रकार (+ / -)</th>
+                  <th className={`py-2.5 px-2 text-center w-24 ${cellBorderClass}`}>TYPE (+ / -)</th>
                   
-                  {/* Detailed Qty & Rate columns shown ONLY in 'rate_qty' mode */}
-                  {doc.tableMode !== 'direct_amount' && (
+                  {/* Detailed Qty & Rate columns shown ONLY in 'measurement_sqft' mode */}
+                  {doc.tableMode !== 'cash_ledger' && doc.tableMode !== 'direct_amount' && (
                     <>
-                      <th className={`py-2.5 px-2 text-center w-28 ${cellBorderClass}`}>QUANTITY / UNIT</th>
+                      <th className={`py-2.5 px-2 text-center w-28 ${cellBorderClass}`}>QUANTITY / SQ.FT</th>
                       <th className={`py-2.5 px-3 text-right w-28 ${cellBorderClass}`}>RATE ({doc.currency})</th>
                     </>
                   )}
 
                   <th className="py-2.5 px-3 text-right w-36">
-                    {doc.tableMode === 'direct_amount' ? `रकम AMOUNT (${doc.currency})` : `TOTAL (${doc.currency})`}
+                    AMOUNT ({doc.currency})
                   </th>
-                  <th className="w-8 no-print"></th>
+                  {isEditable && <th className="w-8 no-print"></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-300 text-xs">
                 {calculations.items.map((item, index) => {
                   const isAdvanceRow = item.itemType === 'advance';
+                  const isCashLedger = doc.tableMode === 'cash_ledger' || doc.tableMode === 'direct_amount';
                   return (
                     <tr 
                       key={item.id} 
@@ -470,7 +484,7 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
                           type="text"
                           value={item.description}
                           onChange={(e) => handleUpdateItem(index, 'description', e.target.value)}
-                          placeholder={isAdvanceRow ? "उदा. पेंट का एडवांस मिला / कैश एडवांस" : "उदा. सीलिंग पेंट / वाल पुट्टी / लेबर काम"}
+                          placeholder={isAdvanceRow ? "e.g. Paint Purchase Advance Received / Cash Received" : "e.g. Royal Wall Paint / Ceiling Work / Teakwood Wardrobe"}
                           className={`w-full bg-transparent font-medium uppercase focus:outline-none focus:bg-indigo-50/20 py-0.5 rounded ${
                             isAdvanceRow ? 'text-amber-950 font-bold' : 'text-slate-900'
                           }`}
@@ -489,12 +503,12 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
                               : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300 shadow-2xs'
                           }`}
                         >
-                          {isAdvanceRow ? '(-) मिला' : '(+) काम'}
+                          {isAdvanceRow ? '(-) Advance' : '(+) Work'}
                         </button>
                       </td>
 
-                      {/* Quantity & Unit (Visible only in 'rate_qty' mode) */}
-                      {doc.tableMode !== 'direct_amount' && (
+                      {/* Quantity & Unit (Visible only in 'measurement_sqft' mode) */}
+                      {!isCashLedger && (
                         <>
                           <td className={`py-2 px-2 text-center ${cellBorderClass}`}>
                             <div className="flex items-center justify-center gap-1 font-mono">
@@ -509,13 +523,13 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
                                 type="text"
                                 value={item.unit}
                                 onChange={(e) => handleUpdateItem(index, 'unit', e.target.value)}
-                                placeholder="SFT"
-                                className="w-10 text-center text-slate-600 uppercase bg-transparent focus:outline-none focus:bg-indigo-50/20 py-0.5 rounded text-[10.5px] font-semibold"
+                                placeholder="Sq.Ft"
+                                className="w-12 text-center text-slate-600 uppercase bg-transparent focus:outline-none focus:bg-indigo-50/20 py-0.5 rounded text-[10.5px] font-semibold"
                               />
                             </div>
                           </td>
 
-                          {/* Rate (Visible only in 'rate_qty' mode) */}
+                          {/* Rate (Visible only in 'measurement_sqft' mode) */}
                           <td className={`py-2 px-3 text-right font-mono font-semibold ${cellBorderClass}`}>
                             <input
                               type="number"
@@ -539,7 +553,7 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
                             step="any"
                             value={item.amount}
                             onChange={(e) => handleUpdateItemTotalAmount(index, Math.abs(parseFloat(e.target.value) || 0))}
-                            title="Click to directly edit amount (सीधे रकम बदलें)"
+                            title="Click to directly edit amount"
                             className={`w-28 text-right font-extrabold bg-transparent focus:outline-none focus:ring-1 px-1 py-0.5 rounded font-mono tabular-nums text-xs border border-transparent transition cursor-text ${
                               isAdvanceRow
                                 ? 'text-rose-700 hover:border-rose-400 focus:bg-rose-100/70 focus:ring-rose-500'
@@ -550,18 +564,20 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
                       </td>
 
                       {/* Row delete on hover */}
-                      <td className="py-2 px-1 text-center no-print">
-                        {doc.items.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteRow(index)}
-                            className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 p-1 transition-opacity"
-                            title="Delete row"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </td>
+                      {isEditable && (
+                        <td className="py-2 px-1 text-center no-print">
+                          {doc.items.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRow(index)}
+                              className="opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 p-1 transition-opacity cursor-pointer"
+                              title="Delete row"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -569,22 +585,24 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
             </table>
 
             {/* In-Table Add Buttons (Work Charge + and Advance Received -) */}
-            <div className="py-2.5 px-3 bg-slate-50 border-t border-slate-300 no-print flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => handleAddRow('charge')}
-                className="px-4 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-md font-bold text-xs shadow-xs transition-colors inline-flex items-center gap-1.5 active:scale-95"
-              >
-                <span>+ + काम / बिल जोड़ें (+ Add Work)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAddRow('advance')}
-                className="px-4 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 rounded-md font-bold text-xs shadow-xs transition-colors inline-flex items-center gap-1.5 active:scale-95"
-              >
-                <span>- - एडवांस / पेमेंट मिला (- Add Advance)</span>
-              </button>
-            </div>
+            {isEditable && (
+              <div className="py-2.5 px-3 bg-slate-50 border-t border-slate-300 no-print flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleAddRow('charge')}
+                  className="px-4 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-md font-bold text-xs shadow-xs transition-colors inline-flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                >
+                  <span>+ + Add Work / Charge Item</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddRow('advance')}
+                  className="px-4 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 rounded-md font-bold text-xs shadow-xs transition-colors inline-flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                >
+                  <span>- - Add Advance / Payment Received</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* ================= TOTALS & ADVANCE DEDUCTION SECTION (With Distinct Grid Lines) ================= */}
@@ -594,40 +612,150 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
               {/* Total Work Charges / Subtotal */}
               <div className="flex justify-between items-center py-2 px-4 border-b border-slate-300 bg-white">
                 <span className="font-bold text-slate-700 uppercase tracking-wide">
-                  {calculations.totalAdvanceDeductions > 0 ? 'कुल काम की रकम (TOTAL WORK CHARGES):' : 'SUBTOTAL:'}
+                  {calculations.totalAdvanceDeductions > 0 ? 'TOTAL WORK CHARGES:' : 'SUBTOTAL:'}
                 </span>
                 <span className="font-mono font-bold text-slate-900 tabular-nums">
                   {formatCurrency(calculations.totalWorkCharges || calculations.rawSubtotal, doc.currency)}
                 </span>
               </div>
 
-              {/* Tax / GST - Editable rate (shown only if GST enabled) */}
-              {doc.taxType !== 'none' && (
-                <div className="flex justify-between items-center py-1.5 px-4 border-b border-slate-300 bg-slate-50/50">
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-700 font-medium">Tax (</span>
-                    <input
-                      type="number"
-                      value={doc.items[0]?.taxRate || 10}
-                      onChange={(e) => {
-                        const newTax = parseFloat(e.target.value) || 0;
-                        const newItems = doc.items.map(it => ({ ...it, taxRate: newTax }));
-                        onUpdateDocument && onUpdateDocument({ ...doc, items: newItems, updatedAt: new Date().toISOString() });
-                      }}
-                      className="w-10 text-center font-bold text-slate-800 bg-transparent border-b border-slate-400 focus:outline-none"
-                    />
-                    <span className="text-slate-700 font-medium">% GST):</span>
+              {/* Customizable Highlight Service Tax / GST Box */}
+              {doc.taxType !== 'none' ? (
+                <div 
+                  className="py-2 px-4 border-b border-slate-300 transition-colors relative group"
+                  style={{ 
+                    backgroundColor: doc.taxBoxBgColor || '#fef3c7',
+                    color: doc.taxTextColor || '#78350f'
+                  }}
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-extrabold text-[11px] uppercase tracking-wide">
+                        {isEditable ? (
+                          <input
+                            type="text"
+                            value={doc.taxCustomLabel !== undefined ? doc.taxCustomLabel : 'Service Tax / GST'}
+                            onChange={(e) => handleUpdate('taxCustomLabel', e.target.value)}
+                            placeholder="Service Tax / GST"
+                            className="font-extrabold bg-transparent border-b border-dashed border-current focus:outline-none px-1 text-xs"
+                            style={{ color: doc.taxTextColor || '#78350f' }}
+                          />
+                        ) : (
+                          <span>{doc.taxCustomLabel || 'Service Tax / GST'}</span>
+                        )}
+                      </span>
+                      <div className="flex items-center gap-0.5 text-xs font-semibold">
+                        <span>(</span>
+                        {isEditable ? (
+                          <input
+                            type="number"
+                            value={doc.items[0]?.taxRate || 18}
+                            onChange={(e) => {
+                              const newTax = parseFloat(e.target.value) || 0;
+                              const newItems = doc.items.map(it => ({ ...it, taxRate: newTax }));
+                              onUpdateDocument && onUpdateDocument({ ...doc, items: newItems, updatedAt: new Date().toISOString() });
+                            }}
+                            className="w-10 text-center font-bold bg-transparent border-b border-current focus:outline-none"
+                            style={{ color: doc.taxTextColor || '#78350f' }}
+                          />
+                        ) : (
+                          <span>{doc.items[0]?.taxRate || 18}</span>
+                        )}
+                        <span>%):</span>
+                      </div>
+                    </div>
+
+                    <span className="font-mono tabular-nums font-extrabold text-xs">
+                      + {formatCurrency(calculations.totalTax, doc.currency)}
+                    </span>
                   </div>
-                  <span className="font-mono text-slate-800 tabular-nums font-semibold">
-                    + {formatCurrency(calculations.totalTax, doc.currency)}
-                  </span>
+
+                  {/* Edit Controls: Box Color & Text Color pickers */}
+                  {isEditable && (
+                    <div className="no-print mt-1.5 pt-1.5 border-t border-black/10 flex flex-wrap items-center justify-between gap-1.5 text-[10px] opacity-90">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold">Box Color:</span>
+                        {[
+                          { hex: '#fef3c7', label: 'Amber' },
+                          { hex: '#e0e7ff', label: 'Indigo' },
+                          { hex: '#dcfce7', label: 'Emerald' },
+                          { hex: '#fee2e2', label: 'Rose' },
+                          { hex: '#f1f5f9', label: 'Slate' },
+                          { hex: '#0f172a', label: 'Dark' },
+                          { hex: '#ffffff', label: 'White' },
+                        ].map((c) => (
+                          <button
+                            key={c.hex}
+                            type="button"
+                            title={c.label}
+                            onClick={() => handleUpdate('taxBoxBgColor', c.hex)}
+                            className="w-3.5 h-3.5 rounded-full border border-black/20 hover:scale-125 transition-transform cursor-pointer"
+                            style={{ backgroundColor: c.hex }}
+                          />
+                        ))}
+                        <input
+                          type="color"
+                          value={doc.taxBoxBgColor || '#fef3c7'}
+                          onChange={(e) => handleUpdate('taxBoxBgColor', e.target.value)}
+                          title="Custom Box Color"
+                          className="w-4 h-4 rounded cursor-pointer border-0 p-0"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold">Text Color:</span>
+                        {[
+                          { hex: '#78350f', label: 'Amber' },
+                          { hex: '#1e1b4b', label: 'Navy' },
+                          { hex: '#064e3b', label: 'Green' },
+                          { hex: '#991b1b', label: 'Red' },
+                          { hex: '#0f172a', label: 'Black' },
+                          { hex: '#ffffff', label: 'White' },
+                        ].map((c) => (
+                          <button
+                            key={c.hex}
+                            type="button"
+                            title={c.label}
+                            onClick={() => handleUpdate('taxTextColor', c.hex)}
+                            className="w-3.5 h-3.5 rounded-full border border-black/20 hover:scale-125 transition-transform cursor-pointer"
+                            style={{ backgroundColor: c.hex }}
+                          />
+                        ))}
+                        <input
+                          type="color"
+                          value={doc.taxTextColor || '#78350f'}
+                          onChange={(e) => handleUpdate('taxTextColor', e.target.value)}
+                          title="Custom Text Color"
+                          className="w-4 h-4 rounded cursor-pointer border-0 p-0"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleUpdate('taxType', 'none')}
+                          className="text-[9.5px] text-rose-600 hover:underline ml-1 cursor-pointer font-bold"
+                          title="Hide Tax Box"
+                        >
+                          ✕ Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              ) : isEditable ? (
+                <div className="py-1.5 px-4 border-b border-slate-300 bg-slate-50 text-center no-print">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdate('taxType', 'gst')}
+                    className="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold hover:underline cursor-pointer flex items-center justify-center gap-1 mx-auto"
+                  >
+                    <span>+ Add Highlight Box for Service Tax / GST / Labour</span>
+                  </button>
+                </div>
+              ) : null}
 
               {/* Shipping / Transport Cost */}
               {(doc.shippingCharges > 0 || isEditable) && (
                 <div className="flex justify-between items-center py-1.5 px-4 border-b border-slate-300 bg-white">
-                  <span className="text-slate-700 font-medium">गाड़ी भाड़ा / Transport Cost:</span>
+                  <span className="text-slate-700 font-medium">Transport / Freight Charges:</span>
                   <div className="flex items-center gap-1">
                     <span className="text-slate-500 font-mono">+ {doc.currency}</span>
                     <input
@@ -643,13 +771,13 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
               {/* GRAND TOTAL (Directly Editable with Auto Reset!) */}
               <div className="flex justify-between items-center py-2 px-4 bg-slate-100 border-b-2 border-slate-400 font-bold group">
                 <div className="flex items-center gap-2">
-                  <span className="uppercase text-slate-900 tracking-wider">कुल बिल (GRAND TOTAL):</span>
+                  <span className="uppercase text-slate-900 tracking-wider">GRAND TOTAL:</span>
                   {doc.customGrandTotal !== undefined && (
                     <button
                       type="button"
                       onClick={() => handleUpdate('customGrandTotal', undefined)}
                       title="Reset to auto-calculated total"
-                      className="no-print text-[10px] bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full flex items-center gap-1 transition font-sans font-semibold"
+                      className="no-print text-[10px] bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full flex items-center gap-1 transition font-sans font-semibold cursor-pointer"
                     >
                       <RotateCcw className="w-2.5 h-2.5" />
                       <span>Auto</span>
@@ -666,7 +794,7 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
                       const val = parseFloat(e.target.value);
                       handleUpdate('customGrandTotal', isNaN(val) ? 0 : val);
                     }}
-                    title="Click to directly edit Grand Total amount (सीधे कुल बिल बदलें)"
+                    title="Click to directly edit Grand Total amount"
                     className="w-36 text-right font-mono text-base font-extrabold text-slate-900 bg-transparent hover:border-amber-400 focus:bg-amber-100 focus:outline-none focus:ring-1 focus:ring-amber-500 px-1.5 py-0.5 rounded border border-transparent transition cursor-text"
                   />
                 </div>
@@ -675,7 +803,7 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
               {/* ADVANCES & DEDUCTIONS SECTION (Minus Items + Direct Advance) */}
               <div className="py-2 px-4 bg-amber-50/90 border-b-2 border-slate-400 space-y-1.5">
                 <div className="flex justify-between items-center font-bold text-amber-950">
-                  <span className="uppercase tracking-wide">कुल मिला हुआ रुपया / एडवांस (TOTAL ADVANCE):</span>
+                  <span className="uppercase tracking-wide">LESS TOTAL ADVANCE / RECEIVED:</span>
                   <span className="font-mono font-extrabold text-rose-600 tabular-nums">
                     - {formatCurrency(calculations.totalAdvanceDeductions, doc.currency)}
                   </span>
@@ -684,7 +812,7 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
                 {/* Direct advance entry box */}
                 <div className="flex justify-between items-center text-[11px] text-amber-900 pt-1 border-t border-amber-200/60">
                   <div className="flex items-center gap-1.5">
-                    <span>अन्य एडवांस (Direct Cash / GPay Advance):</span>
+                    <span>Direct Cash / UPI Advance Received:</span>
                     <input
                       type="number"
                       value={doc.advanceReceived || ''}
@@ -705,8 +833,8 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
                 style={{ backgroundColor: primaryColor }}
               >
                 <div>
-                  <span className="tracking-wider uppercase text-sm block">बाकी बचा हुआ रुपया (NET REMAINING DUE):</span>
-                  <span className="text-[10px] font-normal opacity-90">शुद्ध बकाया भुगतान</span>
+                  <span className="tracking-wider uppercase text-sm block">NET BALANCE DUE:</span>
+                  <span className="text-[10px] font-normal opacity-90">Remaining Payable Amount</span>
                 </div>
                 <span className="font-mono text-xl tabular-nums" style={{ color: secondaryColor || '#fef08a' }}>
                   {formatCurrency(calculations.netRemainingDue, doc.currency)}
@@ -724,7 +852,7 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
               </span>
             </div>
 
-            {(doc.advanceReceived || 0) > 0 && (
+            {(calculations.totalAdvanceDeductions > 0 || (doc.advanceReceived || 0) > 0) && (
               <div className="pt-1 border-t border-slate-200">
                 <span className="font-bold text-amber-950 uppercase">BALANCE PAYABLE IN WORDS: </span>
                 <span className="font-bold text-slate-900 italic">
@@ -734,23 +862,91 @@ export const DocumentRenderer: React.FC<DocumentRendererProps> = ({
             )}
           </div>
 
-          {/* ================= BANK DETAILS & UPI QR ================= */}
-          {doc.showUpiQr && doc.bankDetails.upiId && (
-            <div className="flex justify-between items-center p-3 bg-slate-50 border border-slate-300 rounded-lg mb-3 text-xs">
-              <div className="space-y-0.5">
+          {/* ================= BANK DETAILS & UPI QR (Editable & Open Amount Support) ================= */}
+          {doc.showUpiQr && (
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-slate-50 border border-slate-300 rounded-lg mb-3 text-xs gap-3">
+              <div className="space-y-1 flex-1">
                 <p className="font-bold text-slate-800 uppercase flex items-center gap-1.5">
                   <CreditCard className="w-3.5 h-3.5 text-slate-700" />
                   Bank & Payment Details:
                 </p>
-                <p className="text-[11px] text-slate-700">Bank: <strong className="text-slate-900">{doc.bankDetails.bankName}</strong> | A/C: <strong className="font-mono text-slate-900">{doc.bankDetails.accountNumber}</strong></p>
-                <p className="text-[11px] text-slate-700">IFSC: <strong className="font-mono">{doc.bankDetails.ifsc}</strong> | UPI ID: <strong className="font-mono text-emerald-800">{doc.bankDetails.upiId}</strong></p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-slate-700">
+                  <div className="flex items-center gap-1">
+                    <span className="shrink-0 text-slate-500">Bank:</span>
+                    <input
+                      type="text"
+                      value={doc.bankDetails.bankName}
+                      onChange={(e) => handleUpdateBank('bankName', e.target.value)}
+                      placeholder="State Bank of India"
+                      className="font-bold text-slate-900 bg-transparent hover:border-b hover:border-slate-400 focus:outline-none focus:bg-white px-1 py-0.2 rounded w-full"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="shrink-0 text-slate-500">A/C No:</span>
+                    <input
+                      type="text"
+                      value={doc.bankDetails.accountNumber}
+                      onChange={(e) => handleUpdateBank('accountNumber', e.target.value)}
+                      placeholder="32109876543"
+                      className="font-mono font-bold text-slate-900 bg-transparent hover:border-b hover:border-slate-400 focus:outline-none focus:bg-white px-1 py-0.2 rounded w-full"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="shrink-0 text-slate-500">IFSC:</span>
+                    <input
+                      type="text"
+                      value={doc.bankDetails.ifsc}
+                      onChange={(e) => handleUpdateBank('ifsc', e.target.value.toUpperCase())}
+                      placeholder="SBIN0001234"
+                      className="font-mono font-bold text-slate-900 bg-transparent hover:border-b hover:border-slate-400 focus:outline-none focus:bg-white px-1 py-0.2 rounded w-full"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="shrink-0 text-slate-500">UPI ID:</span>
+                    <input
+                      type="text"
+                      value={doc.bankDetails.upiId}
+                      onChange={(e) => handleUpdateBank('upiId', e.target.value)}
+                      placeholder="8181881311@paytm"
+                      className="font-mono font-bold text-emerald-800 bg-transparent hover:border-b hover:border-slate-400 focus:outline-none focus:bg-white px-1 py-0.2 rounded w-full"
+                    />
+                  </div>
+                </div>
               </div>
 
+              {/* UPI QR Code with Open / Custom Amount Badge */}
               {upiQrUrl && (
-                <div className="flex items-center gap-2 bg-white p-1.5 rounded border border-slate-300 shadow-2xs shrink-0">
+                <div className="flex items-center gap-2.5 bg-white p-2 rounded-lg border border-slate-300 shadow-2xs shrink-0 self-center sm:self-auto">
                   <img src={upiQrUrl} alt="UPI QR" className="w-16 h-16 object-contain" />
-                  <div className="text-[8.5px] text-slate-600 font-bold uppercase leading-tight">
-                    Scan to Pay<br /><span className="text-emerald-700 font-bold">GPay / PhonePe</span>
+                  <div className="text-left">
+                    <div className="flex items-center gap-1">
+                      <span className={`text-[8.5px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
+                        doc.qrAmountMode === 'fixed' 
+                          ? 'bg-amber-100 text-amber-900' 
+                          : 'bg-emerald-100 text-emerald-900'
+                      }`}>
+                        {doc.qrAmountMode === 'fixed' ? '🔒 Fixed Bill Due' : '⚡ Open Amount'}
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-extrabold text-slate-900 mt-0.5 leading-tight">
+                      {doc.qrAmountMode === 'fixed' 
+                        ? `${formatCurrency(calculations.netRemainingDue, doc.currency)} Fixed` 
+                        : 'Customer Enters Any Amount'}
+                    </div>
+                    <div className="text-[8.5px] text-slate-500 font-medium mt-0.5">
+                      GPay • PhonePe • Paytm • BHIM
+                    </div>
+                    {isEditable && (
+                      <button
+                        type="button"
+                        onClick={() => handleUpdate('qrAmountMode', doc.qrAmountMode === 'fixed' ? 'open' : 'fixed')}
+                        className="no-print mt-1 text-[9px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-indigo-700 font-bold border border-slate-200 transition flex items-center gap-1 cursor-pointer"
+                        title="Click to toggle between Open Amount (customer enters any amount) and Fixed Amount"
+                      >
+                        <span>{doc.qrAmountMode === 'fixed' ? '🔒 Fixed' : '⚡ Open (No Fixed Amount)'}</span>
+                        <span className="text-slate-400 font-normal underline">Toggle ⇄</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

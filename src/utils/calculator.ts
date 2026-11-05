@@ -42,8 +42,9 @@ export function calculateDocument(doc: DocumentData): CalculationResult {
     const qty = Number(item.quantity) || 1;
     const rate = Number(item.rate) || 0;
     
-    // In direct_amount mode, amount is taken directly; in rate_qty mode, qty * rate
-    let gross = (doc.tableMode === 'direct_amount' && item.amount !== undefined) 
+    const isCashLedgerMode = doc.tableMode === 'cash_ledger' || doc.tableMode === 'direct_amount';
+    // In cash_ledger mode, amount is taken directly; in measurement_sqft mode, qty * rate
+    let gross = (isCashLedgerMode && item.amount !== undefined) 
       ? Math.abs(Number(item.amount)) 
       : (qty * rate);
 

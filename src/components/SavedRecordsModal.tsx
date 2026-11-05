@@ -45,7 +45,7 @@ export const SavedRecordsModal: React.FC<SavedRecordsModalProps> = ({
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shrink-0">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              Saved Quotations & Bills (सुरक्षित रिकॉर्ड्स)
+              Saved Quotations & Bills
             </h2>
             <p className="text-xs text-slate-500">
               Browse, search, duplicate, or reload previously saved documents
@@ -137,7 +137,7 @@ export const SavedRecordsModal: React.FC<SavedRecordsModalProps> = ({
                     }}
                     className="px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-400 rounded-lg flex items-center gap-1"
                   >
-                    <FolderOpen className="w-3.5 h-3.5" /> Open (खोलें)
+                    <FolderOpen className="w-3.5 h-3.5" /> Open
                   </button>
                   <button
                     onClick={() => onDeleteDocument(d.id)}

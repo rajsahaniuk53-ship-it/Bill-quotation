@@ -2,16 +2,33 @@ import { DocumentData } from '../types/document';
 import { LETTERHEAD_TEMPLATES } from '../data/letterheadTemplates';
 import { calculateDocument } from './calculator';
 import { formatCurrency, numberToWordsIndian } from './numberToWords';
+import { generateUpiQrDataUrl } from './qrGenerator';
 
 /**
  * Downloads a standalone, self-contained offline HTML file of the quotation/bill
  * which can be opened and printed on any phone, tablet, or PC without needing an internet connection.
  */
-export function downloadPrintableHtml(doc: DocumentData): void {
+export async function downloadPrintableHtml(doc: DocumentData, customQrUrl?: string): Promise<void> {
   const template = LETTERHEAD_TEMPLATES.find((t) => t.id === doc.templateId) || LETTERHEAD_TEMPLATES[0];
   const calc = calculateDocument(doc);
   const isQuote = doc.type === 'quotation' || doc.type === 'estimate';
   const title = isQuote ? `Quotation_${doc.docNumber}` : `Invoice_${doc.docNumber}`;
+
+  let qrDataUrl = customQrUrl || '';
+  if (!qrDataUrl && doc.showUpiQr && doc.bankDetails.upiId) {
+    try {
+      const isFixed = doc.qrAmountMode === 'fixed';
+      const targetAmount = isFixed ? (calc.netRemainingDue > 0 ? calc.netRemainingDue : calc.grandTotal) : null;
+      qrDataUrl = await generateUpiQrDataUrl(
+        doc.bankDetails.upiId,
+        doc.bankDetails.accountName || doc.company.name,
+        targetAmount,
+        `${isQuote ? 'Quote' : 'Bill'} ${doc.docNumber}`
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   const htmlContent = `<!DOCTYPE html>
 <html lang="en">
@@ -63,19 +80,30 @@ export function downloadPrintableHtml(doc: DocumentData): void {
 
     <div class="grid">
       <div style="background: #f8fafc; padding: 12px; border-radius: 6px;">
-        <strong style="font-size: 11px; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 5px;">Billed To / बिल प्राप्तकर्ता:</strong>
+        <strong style="font-size: 11px; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 5px;">Billed To / Client:</strong>
         <strong style="font-size: 14px;">${doc.client.name}</strong>
         ${doc.client.companyName ? `<div style="font-size: 12px; color: #475569;">${doc.client.companyName}</div>` : ''}
         <div style="font-size: 12px; color: #475569; margin-top: 4px;">${doc.client.addressLine1}, ${doc.client.city}</div>
         <div style="font-size: 12px; color: #475569;">Ph: ${doc.client.phone} | ${doc.client.email}</div>
         ${doc.client.gstin ? `<div style="font-size: 12px; font-weight: bold; margin-top: 4px;">GSTIN: ${doc.client.gstin}</div>` : ''}
       </div>
-      <div style="background: #f8fafc; padding: 12px; border-radius: 6px; font-size: 12px;">
-        <strong style="font-size: 11px; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 5px;">Bank & Payment Info:</strong>
-        <div>Bank: <strong>${doc.bankDetails.bankName || 'N/A'}</strong></div>
-        <div>A/C No: <strong>${doc.bankDetails.accountNumber || 'N/A'}</strong></div>
-        <div>IFSC: <strong>${doc.bankDetails.ifsc || 'N/A'}</strong></div>
-        ${doc.bankDetails.upiId ? `<div>UPI ID: <strong style="color: #059669;">${doc.bankDetails.upiId}</strong></div>` : ''}
+      <div style="background: #f8fafc; padding: 12px; border-radius: 6px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+        <div>
+          <strong style="font-size: 11px; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 5px;">Bank & Payment Info:</strong>
+          <div>Bank: <strong>${doc.bankDetails.bankName || 'N/A'}</strong></div>
+          <div>A/C No: <strong>${doc.bankDetails.accountNumber || 'N/A'}</strong></div>
+          <div>IFSC: <strong>${doc.bankDetails.ifsc || 'N/A'}</strong></div>
+          ${doc.bankDetails.upiId ? `<div>UPI ID: <strong style="color: #059669;">${doc.bankDetails.upiId}</strong></div>` : ''}
+        </div>
+        ${qrDataUrl ? `
+        <div style="text-align: center; background: #ffffff; padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;">
+          <img src="${qrDataUrl}" style="width: 72px; height: 72px; display: block; margin: 0 auto;" alt="UPI QR" />
+          <div style="font-size: 8px; font-weight: bold; text-transform: uppercase; margin-top: 3px; color: #047857;">
+            ${doc.qrAmountMode === 'fixed' ? 'Scan & Pay Due' : 'Scan & Pay Any Amount'}
+          </div>
+          <div style="font-size: 7.5px; color: #64748b;">(GPay / PhonePe / Paytm)</div>
+        </div>
+        ` : ''}
       </div>
     </div>
 
@@ -84,9 +112,9 @@ export function downloadPrintableHtml(doc: DocumentData): void {
       <thead>
         <tr>
           <th style="width: 40px;">#</th>
-          <th>काम / मटेरियल या एडवांस विवरण (Particulars)</th>
-          <th style="text-align: center; width: 110px;">प्रकार (+/-)</th>
-          <th style="text-align: right; width: 140px;">रकम AMOUNT (${doc.currency})</th>
+          <th>Item Description / Particulars</th>
+          <th style="text-align: center; width: 110px;">Type (+/-)</th>
+          <th style="text-align: right; width: 140px;">Amount (${doc.currency})</th>
         </tr>
       </thead>
       <tbody>
@@ -138,18 +166,18 @@ export function downloadPrintableHtml(doc: DocumentData): void {
     `}
 
     <div class="totals" style="width: 320px; margin-left: auto; margin-bottom: 20px;">
-      <div class="total-row"><span>कुल काम की रकम (Total Work):</span><strong>${doc.currency} ${calc.totalWorkCharges.toFixed(2)}</strong></div>
+      <div class="total-row"><span>Total Work Charges:</span><strong>${doc.currency} ${calc.totalWorkCharges.toFixed(2)}</strong></div>
       ${calc.totalDiscount > 0 ? `<div class="total-row" style="color: #059669;"><span>Discount:</span><strong>- ${doc.currency} ${calc.totalDiscount.toFixed(2)}</strong></div>` : ''}
       ${calc.totalTax > 0 ? `<div class="total-row"><span>GST/Tax:</span><strong>+ ${doc.currency} ${calc.totalTax.toFixed(2)}</strong></div>` : ''}
       ${calc.shippingCharges > 0 ? `<div class="total-row"><span>Shipping/Misc:</span><strong>+ ${doc.currency} ${calc.shippingCharges.toFixed(2)}</strong></div>` : ''}
       <div class="total-row grand-total">
-        <span>Grand Total (कुल रकम):</span>
+        <span>Grand Total:</span>
         <span>${doc.currency} ${calc.grandTotal.toFixed(2)}</span>
       </div>
       ${calc.totalAdvanceDeductions > 0 ? `
-      <div class="total-row" style="color: #b45309; padding-top: 8px;"><span>कुल एडवांस मिला (Less Total Advance):</span><strong>- ${doc.currency} ${calc.totalAdvanceDeductions.toFixed(2)}</strong></div>
+      <div class="total-row" style="color: #b45309; padding-top: 8px;"><span>Less Total Advance:</span><strong>- ${doc.currency} ${calc.totalAdvanceDeductions.toFixed(2)}</strong></div>
       <div class="total-row" style="background: #0f172a; color: #fef08a; padding: 12px; border-radius: 6px; margin-top: 8px; font-weight: bold; font-size: 16px;">
-        <span>बाकी बचा हुआ रुपया (Net Due):</span>
+        <span>Net Due:</span>
         <span>${doc.currency} ${calc.netRemainingDue.toFixed(2)}</span>
       </div>` : ''}
     </div>

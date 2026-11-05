@@ -248,7 +248,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                  Products & Services List (सामान व सेवा सूची)
+                  Products & Services List
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   Rate, Quantity, Discount aur GST auto-calculate hote hain
@@ -259,7 +259,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
                 onClick={addItem}
                 className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-xs"
               >
-                <Plus className="w-3.5 h-3.5" /> Add New Item (+ सामान जोड़ें)
+                <Plus className="w-3.5 h-3.5" /> Add New Item
               </button>
             </div>
 
@@ -300,7 +300,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
                   {/* Description */}
                   <div className="mb-2.5">
                     <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                      Item Name & Description (विवरण) *
+                      Item Name & Description *
                     </label>
                     <textarea
                       rows={2}
@@ -328,7 +328,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
                     <div>
                       <label className="block text-[10px] font-medium text-slate-500 mb-1">
-                        Quantity (मात्रा) *
+                        Quantity *
                       </label>
                       <input
                         type="number"
@@ -342,7 +342,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
                     <div>
                       <label className="block text-[10px] font-medium text-slate-500 mb-1">
-                        Unit (इकाई)
+                        Unit
                       </label>
                       <select
                         value={item.unit}
@@ -436,7 +436,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
               onClick={addItem}
               className="w-full py-2.5 border-2 border-dashed border-indigo-300 dark:border-indigo-800 hover:border-indigo-500 rounded-xl text-indigo-600 dark:text-indigo-400 font-semibold flex items-center justify-center gap-2 hover:bg-indigo-50/30 transition-colors"
             >
-              <Plus className="w-4 h-4" /> + Add Another Item (नया सामान जोड़ें)
+              <Plus className="w-4 h-4" /> + Add Another Item
             </button>
           </div>
         )}
@@ -445,25 +445,25 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
         {activeTab === 'basic' && (
           <div className="space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-              Document Information (दस्तावेज़ विवरण)
+              Document Information
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Document Type (प्रकार) *
+                  Document Type *
                 </label>
                 <select
                   value={doc.type}
                   onChange={(e) => updateField('type', e.target.value as DocumentType)}
                   className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold"
                 >
-                  <option value="quotation">Quotation / कोटेशन (Estimate)</option>
-                  <option value="invoice">Tax Invoice / बिल (टैक्स इनवॉइस)</option>
-                  <option value="estimate">Estimate / अनुमान</option>
+                  <option value="quotation">Quotation (Estimate)</option>
+                  <option value="invoice">Tax Invoice (Bill)</option>
+                  <option value="estimate">Estimate</option>
                   <option value="proforma">Proforma Invoice</option>
                   <option value="delivery_challan">Delivery Challan</option>
-                  <option value="cash_memo">Cash Memo / नकद पर्ची</option>
+                  <option value="cash_memo">Cash Memo</option>
                 </select>
               </div>
 
@@ -482,7 +482,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Date of Issue (दिनांक) *
+                  Date of Issue *
                 </label>
                 <input
                   type="date"
@@ -494,7 +494,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  {doc.type === 'quotation' ? 'Valid Until (वैधता तारीख)' : 'Due Date (भुगतान तारीख)'}
+                  {doc.type === 'quotation' ? 'Valid Until' : 'Due Date'}
                 </label>
                 <input
                   type="date"
@@ -519,7 +519,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Payment Terms / भुगतान शर्तें
+                  Payment Terms
                 </label>
                 <input
                   type="text"
@@ -539,7 +539,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                  My Business / Company Details (आपकी दुकान या कंपनी)
+                  My Business / Company Details
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   Yeh jaankari har letterhead aur bill par sabse upar show hogi
@@ -558,7 +558,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
                   </div>
                 )}
                 <div>
-                  <p className="font-bold text-slate-900 dark:text-white text-xs">Business Logo (कंपनी का लोगो)</p>
+                  <p className="font-bold text-slate-900 dark:text-white text-xs">Business Logo</p>
                   <p className="text-[11px] text-slate-500">PNG, JPG or SVG format</p>
                 </div>
               </div>
@@ -582,7 +582,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Business / Company Name (दुकान/कंपनी का नाम) *
+                  Business / Company Name *
                 </label>
                 <input
                   type="text"
@@ -595,7 +595,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div className="sm:col-span-2">
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Tagline / Business Subtitle (स्लोगन)
+                  Tagline / Business Subtitle
                 </label>
                 <input
                   type="text"
@@ -608,7 +608,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Phone Number (फोन नंबर) *
+                  Phone Number *
                 </label>
                 <input
                   type="text"
@@ -621,7 +621,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Email Address (ईमेल) *
+                  Email Address *
                 </label>
                 <input
                   type="email"
@@ -634,7 +634,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div className="sm:col-span-2">
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Address Line 1 (पता लाइन 1) *
+                  Address Line 1 *
                 </label>
                 <input
                   type="text"
@@ -647,7 +647,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  City (शहर) *
+                  City *
                 </label>
                 <input
                   type="text"
@@ -660,7 +660,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  State & Pincode (राज्य व पिनकोड)
+                  State & Pincode
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -682,7 +682,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  GSTIN (जीएसटी नंबर)
+                  GSTIN
                 </label>
                 <input
                   type="text"
@@ -695,7 +695,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  PAN Number (पैन नंबर)
+                  PAN Number
                 </label>
                 <input
                   type="text"
@@ -713,13 +713,13 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
         {activeTab === 'client' && (
           <div className="space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-              Client / Customer Details (ग्राहक का विवरण)
+              Client / Customer Details
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Customer / Contact Person Name (ग्राहक का नाम) *
+                  Customer / Contact Person Name *
                 </label>
                 <input
                   type="text"
@@ -732,7 +732,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Client Business / Firm Name (फर्म का नाम)
+                  Client Business / Firm Name
                 </label>
                 <input
                   type="text"
@@ -745,7 +745,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Customer Phone (फोन नंबर)
+                  Customer Phone
                 </label>
                 <input
                   type="text"
@@ -758,7 +758,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Customer Email (ईमेल)
+                  Customer Email
                 </label>
                 <input
                   type="email"
@@ -771,7 +771,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div className="sm:col-span-2">
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Client Address (ग्राहक का पता)
+                  Client Address
                 </label>
                 <input
                   type="text"
@@ -784,7 +784,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  City & State (शहर व राज्य)
+                  City & State
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -806,7 +806,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Client GSTIN (ग्राहक का जीएसटी)
+                  Client GSTIN
                 </label>
                 <input
                   type="text"
@@ -824,14 +824,14 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
         {activeTab === 'taxes' && (
           <div className="space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-              Taxes, Discounts & Extra Charges (टैक्स और अतिरिक्त शुल्क)
+              Taxes, Discounts & Extra Charges
             </h3>
 
             {/* GST Configuration */}
             <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-slate-900 dark:text-white">Tax Regime (टैक्स का प्रकार):</span>
+                  <span className="font-bold text-slate-900 dark:text-white">Tax Regime:</span>
                   <p className="text-[11px] text-slate-500">Enable GST for CGST, SGST and IGST calculations</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -844,7 +844,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200'
                     }`}
                   >
-                    GST Bill (जीएसटी)
+                    GST Bill
                   </button>
                   <button
                     type="button"
@@ -866,8 +866,8 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
                     <span className="font-medium text-slate-700 dark:text-slate-300">GST Supply Location:</span>
                     <p className="text-[11px] text-slate-500">
                       {doc.isInterstate 
-                        ? 'Inter-State (बाहरी राज्य) → Full IGST applies' 
-                        : 'Intra-State (समान राज्य) → 50% CGST + 50% SGST applies'}
+                        ? 'Inter-State → Full IGST applies' 
+                        : 'Intra-State → 50% CGST + 50% SGST applies'}
                     </p>
                   </div>
                   <button
@@ -885,7 +885,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Overall Discount on Bill (अतिरिक्त छूट)
+                  Overall Discount on Bill
                 </label>
                 <div className="flex gap-2">
                   <select
@@ -909,7 +909,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Delivery / Shipping Charges (डिलीवरी शुल्क)
+                  Delivery / Shipping Charges
                 </label>
                 <input
                   type="number"
@@ -937,7 +937,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-bold text-amber-900 dark:text-amber-400 mb-1">
-                  Less Advance Received (एडवांस मिला)
+                  Less Advance Received
                 </label>
                 <input
                   type="number"
@@ -951,7 +951,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Currency Symbol (मुद्रा)
+                  Currency Symbol
                 </label>
                 <select
                   value={doc.currency}
@@ -970,7 +970,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
             {/* Round off toggle */}
             <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
               <div>
-                <span className="font-semibold text-slate-900 dark:text-white">Auto Round-Off (राउंड ऑफ)</span>
+                <span className="font-semibold text-slate-900 dark:text-white">Auto Round-Off</span>
                 <p className="text-[11px] text-slate-500">Automatically round total amount to the nearest integer</p>
               </div>
               <input
@@ -989,7 +989,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                  Bank Details & Instant UPI QR (बैंक खाता और क्यूआर कोड)
+                  Bank Details & Instant UPI QR
                 </h3>
                 <p className="text-[11px] text-slate-500">
                   GPay / PhonePe / Paytm ke liye live QR code generate hota hai
@@ -1009,7 +1009,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Bank Name (बैंक का नाम)
+                  Bank Name
                 </label>
                 <input
                   type="text"
@@ -1022,7 +1022,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Account Holder Name (खाताधारक का नाम)
+                  Account Holder Name
                 </label>
                 <input
                   type="text"
@@ -1035,7 +1035,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Bank Account Number (खाता संख्या)
+                  Bank Account Number
                 </label>
                 <input
                   type="text"
@@ -1048,7 +1048,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  IFSC Code (आईएफएससी कोड)
+                  IFSC Code
                 </label>
                 <input
                   type="text"
@@ -1061,7 +1061,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  Branch Name (शाखा)
+                  Branch Name
                 </label>
                 <input
                   type="text"
@@ -1074,17 +1074,69 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  UPI ID / VPA (गूगलपे / फोनपे यूपीआई)
+                  UPI ID / VPA (GPay / PhonePe / Paytm)
                 </label>
                 <input
                   type="text"
                   value={doc.bankDetails.upiId}
                   onChange={(e) => updateBank('upiId', e.target.value)}
-                  placeholder="e.g. 9876543210@paytm or business@okhdfcbank"
+                  placeholder="e.g. 8181881311@paytm or business@okhdfcbank"
                   className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono font-semibold text-emerald-600"
                 />
               </div>
             </div>
+
+            {/* QR Code Amount Setting: Open Amount vs Fixed Amount */}
+            {doc.showUpiQr && (
+              <div className="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-amber-950 dark:text-amber-200 flex items-center gap-1.5">
+                    <span>⚡</span> QR Code Payment Mode (QR Amount Setting):
+                  </span>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full">
+                    {doc.qrAmountMode === 'fixed' ? '🔒 Fixed Bill Amount' : '⚡ Open Amount (Customer Enters Amount)'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => updateField('qrAmountMode', 'open')}
+                    className={`p-2.5 rounded-lg border text-left transition flex flex-col justify-between ${
+                      doc.qrAmountMode !== 'fixed'
+                        ? 'bg-white dark:bg-slate-800 border-indigo-600 ring-2 ring-indigo-500/30 shadow-xs'
+                        : 'bg-white/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-slate-900 dark:text-white">⚡ Open Amount (Customer Chooses)</span>
+                      {doc.qrAmountMode !== 'fixed' && <span className="text-xs text-indigo-600">✓</span>}
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                      QR code contains no fixed amount — customer can enter and pay any advance or custom sum easily.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => updateField('qrAmountMode', 'fixed')}
+                    className={`p-2.5 rounded-lg border text-left transition flex flex-col justify-between ${
+                      doc.qrAmountMode === 'fixed'
+                        ? 'bg-white dark:bg-slate-800 border-indigo-600 ring-2 ring-indigo-500/30 shadow-xs'
+                        : 'bg-white/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-slate-900 dark:text-white">🔒 Fixed Due Amount</span>
+                      {doc.qrAmountMode === 'fixed' && <span className="text-xs text-indigo-600">✓</span>}
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                      Scanning the QR code automatically populates the exact net remaining due amount.
+                    </p>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1092,13 +1144,13 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
         {activeTab === 'terms' && (
           <div className="space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-              Terms & Conditions, Notes and Signature (नियम व हस्ताक्षर)
+              Terms & Conditions, Notes and Signature
             </h3>
 
             {/* Notes */}
             <div>
               <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
-                Customer Notes / विशेष टिप्पणी
+                Customer Notes & Remarks
               </label>
               <textarea
                 rows={2}
@@ -1113,7 +1165,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400">
-                  Terms & Conditions (नियम व शर्तें)
+                  Terms & Conditions
                 </label>
                 <div className="flex gap-1.5 text-[10px]">
                   <button
@@ -1147,7 +1199,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
               <div>
                 <p className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
                   <PenTool className="w-3.5 h-3.5 text-indigo-600" />
-                  Digital Signature / Seal (डिजिटल दस्तखत)
+                  Digital Signature / Seal
                 </p>
                 <p className="text-[11px] text-slate-500">
                   Draw signature on canvas or upload company seal image
@@ -1175,7 +1227,7 @@ export const DocumentEditorForm: React.FC<DocumentEditorFormProps> = ({
                   className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium text-xs shadow-xs flex items-center gap-1"
                 >
                   <PenTool className="w-3.5 h-3.5" />
-                  {doc.signatureImage ? 'Change Signature' : 'Sign Document (हस्ताक्षर जोड़ें)'}
+                  {doc.signatureImage ? 'Change Signature' : 'Sign Document'}
                 </button>
               </div>
             </div>

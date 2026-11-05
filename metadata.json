@@ -1,0 +1,6 @@
+{
+  "name": "BillCraft - Easy Quotation & Bill Maker with 30 Letterhead Designs",
+  "description": "Professional Quotation & Bill Maker with 30 customizable letterhead designs, auto-calculations, GST, UPI QR code, print/PDF export, and instant quotation-to-bill conversion.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
